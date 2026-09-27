@@ -26,6 +26,7 @@ Tested on real hardware:
 | GameSir G7 Pro; FlyDigi Vader Pro (tested by users) | 2.4 GHz receiver (shows up as an Xbox controller) | Windows.Gaming.Input battery report: exact percentage and charging state. XInput is the fallback (four levels only) |
 | Sony DualShock 4 (PS4) | USB cable and Bluetooth (054C:09CC) | Read straight from the HID input report: exact percentage and charging state (USB byte 30; over Bluetooth the full report is enabled first, then byte 32) |
 | Sony DualSense (PS5) | USB or Bluetooth | Read straight from the HID input report (byte 53); over Bluetooth the full report is enabled first with a feature-report read. |
+| Steam Controller (2026) | Steam Puck (28DE:1304); USB (28DE:1302), Bluetooth LE (28DE:1303), Steam Machine receiver (28DE:1305) also included | Reads the controller's `0x43` input report on the `0xFF00` vendor collection: battery percentage and charging state. Tested on a Steam Puck: `43 02 5e ...` reports 94%, charging. USB, Bluetooth LE and the Steam Machine receiver are not hardware-verified. No controller settings are changed. |
 | Logitech G502 LIGHTSPEED, G502 X PLUS | Lightspeed receiver (046D:C539, 046D:C547) | HID++ 2.0 on the receiver's vendor interface: the device name (feature 0x0005) and the first battery feature the device supports (0x1004 unified battery, 0x1000 battery status or 0x1001 battery voltage; the G502 LIGHTSPEED reports voltage, converted to % with the Li-ion curve used by Solaar, the G502 X PLUS the unified battery percentage). The icon follows the device's unit id (feature 0x0003). Works alongside G HUB |
 | SteelSeries Arctis Nova 7 | 2.4 GHz dongle (1038:22A1) | Output report `00 b0` on interface 3 (usage page 0xFFC0); the reply carries the level and the status (off / charging / on battery), as documented by HeadsetControl. Works alongside SteelSeries GG. The other Nova 7 variants and the Nova 5 / 5X use the same request and are included, but not tested |
 | SteelSeries Rival 3 Wireless | 2.4 GHz dongle (1038:1830) | The mouse exchange on the same interface 3 and the same 0xFFC0 collection as the headsets, but not the `b0` request: a 64-byte `00 aa 01 ...` out, answered by a report echoing `aa`, the bytes after it carrying the level and the charging flag, as yurtemre7/steel-mouse reads it. The report layout follows that project's accept check rather than its decoder - the two disagree - so it is the open question in [#5](https://github.com/HeyOkay/HaloBattery/issues/5): a reply without the `aa` echo is skipped, a level above 100 refused, and the raw reply logged so a probe settles it. Works alongside SteelSeries GG; the Gen 2 revision (1038:1872) is included untested |
@@ -34,6 +35,23 @@ Tested on real hardware:
 Support for other devices is not guaranteed. The code already includes protocols for some other Razer and WLmouse models, should read most other Logitech HID++ 2.0 mice and keyboards on a Lightspeed or Unifying receiver and the other Arctis Nova 7 and Nova 5 models, reads other Xbox-compatible controllers the same way as the GameSir G7 Pro and works with any Bluetooth device whose battery level Windows reports, but these have not been tested. New devices are added based on feedback and diagnostics logs: if yours is not detected or shows a wrong level, open an issue and attach the diagnostics report (see [Troubleshooting](#troubleshooting)).
 
 Two limitations of the Maxwell support are worth stating rather than leaving to be discovered. Two Maxwells on one machine share a single icon: both endpoints report the serial `0000000000000000`, so nothing distinguishes them over HID and only the first one is read. And the Xbox cable PID (`3329:4B1E`) is derived from the Xbox dongle (`3329:4B18`) by the same +1 offset that separates the PC dongle `3329:4B19` from its cable `3329:4B1A` — it has not been measured against an Xbox model, so an Xbox cable may be read as `3329:4B18` and shown as not charging.
+
+Steam Controller support targets the **2026 model**, not the original 2015 controller.
+Battery reports arrive about every 3.5 seconds, so a poll listens for up to 4.5
+seconds across all controller interfaces together. Empty Steam Puck slots do not
+create icons, and each active slot has its own gamepad icon. A controller waking
+behind an already plugged-in puck is detected on the next scheduled poll. Different
+transports use different device keys; simultaneous USB and puck connections are not
+merged without a verified controller identity.
+
+The report layout follows [SDL's Steam Triton driver](https://github.com/libsdl-org/SDL/blob/main/src/joystick/hidapi/SDL_hidapi_steam_triton.c)
+and [protocol structures](https://github.com/libsdl-org/SDL/blob/main/src/joystick/hidapi/steam/controller_structs.h).
+The input-report interval and vendor collection are also documented by
+[Steam Controller Battery Monitor](https://github.com/Pixel1011/Steam-Controller-Battery-Monitor)
+and [TritonLib](https://github.com/Pixel1011/TritonLib).
+
+To run the provider regression tests after installing the requirements:
+`python -m unittest discover -s tests -v`.
 
 ## Installation
 
