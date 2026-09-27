@@ -4,6 +4,7 @@ Supported:
   * Razer (BlackShark V2 Pro headset, mice, etc.): directly over USB/HID, no Synapse
   * Audeze Maxwell (2.4 GHz dongle or USB-C cable)
   * WLmouse (Beast X / Beast X Max / Mini Pro)
+  * VXE R1 Pro Max (Compx/Nordic, receiver or USB cable)
   * Logitech (HID++ 2.0 mice and keyboards: Lightspeed / Unifying receivers, G HUB not needed)
   * SteelSeries (Arctis Nova 7 and Nova 5 headsets, GG not needed)
   * MCHOSE (M7 Ultra and the rest of the 0x5253 family, on the 2.4 GHz receiver)
@@ -62,7 +63,8 @@ import winevents  # noqa: E402
 from providers import hidlist  # noqa: E402
 from providers import (AudezeProvider, BluetoothProvider, DeviceStatus, HyperXProvider,  # noqa: E402
                        LogitechProvider, MchoseProvider, PlayStationProvider, RazerProvider,
-                       SteamControllerProvider, SteelSeriesProvider, WLmouseProvider, XInputProvider)
+                       SteamControllerProvider, SteelSeriesProvider, VxeProvider, WLmouseProvider,
+                       XInputProvider)
 from providers.bluetooth import BluetoothWatcher  # noqa: E402
 
 HEADSET_WORDS = ("blackshark", "kraken", "barracuda", "nari", "thresher", "headset",
@@ -391,7 +393,8 @@ class App:
         self.theme_evt = threading.Event()   # "re-check the icon colour now"
         self.win_events: Optional[winevents.WindowEventWatcher] = None
         self.light_taskbar = self.compute_light()
-        self.providers = [RazerProvider(), AudezeProvider(), WLmouseProvider(), MchoseProvider(),
+        self.providers = [RazerProvider(), AudezeProvider(), WLmouseProvider(), VxeProvider(),
+                          MchoseProvider(),
                           HyperXProvider(), LogitechProvider(), SteelSeriesProvider(), XInputProvider(),
                           PlayStationProvider(), SteamControllerProvider()]
         self.bt = BluetoothProvider()
@@ -956,7 +959,8 @@ def probe():
             pass
     app = App.__new__(App)
     app.cfg = load_config()
-    app.providers = [RazerProvider(), AudezeProvider(), WLmouseProvider(), MchoseProvider(),
+    app.providers = [RazerProvider(), AudezeProvider(), WLmouseProvider(), VxeProvider(),
+                     MchoseProvider(),
                      HyperXProvider(), LogitechProvider(), SteelSeriesProvider(), XInputProvider(),
                      PlayStationProvider(), SteamControllerProvider()]
     app.bt = BluetoothProvider()

@@ -4,6 +4,15 @@ All notable changes to Halo Battery are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- VXE R1 Pro Max support on its 2.4 GHz receiver (3554:F58A) and USB cable
+  (3554:F58C), using the Compx/Nordic battery report and keeping both connection
+  modes under one tray icon. **Unverified** — the model IDs and report layout come
+  from the public reference driver; this project has not yet checked the mouse on
+  hardware.
+
 ## [1.11.0] - 2026-09-27
 
 ### Added
