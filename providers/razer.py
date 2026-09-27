@@ -293,6 +293,10 @@ class RazerProvider(Provider):
             status, level, charging = self._read(cached.path, cached.tid)
             if status in (STATUS_OK, STATUS_TIMEOUT):
                 return status, level, charging
+            if status is None:
+                # A previously working wireless interface can go silent while its
+                # mouse sleeps. Keep the cached path and retry it on the next poll.
+                return STATUS_TIMEOUT, None, None
             self._cache.pop(gkey, None)
 
         # Probe order: vendor / main collection interfaces first, then the rest.
