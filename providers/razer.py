@@ -78,6 +78,7 @@ def maybe_wireless(pid: int, name: str) -> bool:
 
 STATUS_OK = 0x02
 STATUS_BUSY = 0x01
+STATUS_FAILURE = 0x03
 STATUS_TIMEOUT = 0x04     # receiver present, device not responding (off / asleep)
 STATUS_NOT_SUPPORTED = 0x05
 
@@ -289,15 +290,28 @@ class RazerProvider(Provider):
 
     def _poll_group(self, gkey, ifaces, pref_tid):
         cached = self._cache.get(gkey)
+        if cached and not any(d.get("path") == cached.path for d in ifaces):
+            # Windows can re-enumerate a receiver after sleep with a different HID
+            # path. A cached path that vanished from this poll can never wake again,
+            # so discard it and probe the currently enumerated interfaces.
+            self._diag.append("  cached HID interface disappeared; probing current interfaces")
+            self._cache.pop(gkey, None)
+            cached = None
         if cached:
             status, level, charging = self._read(cached.path, cached.tid)
             if status in (STATUS_OK, STATUS_TIMEOUT):
                 return status, level, charging
             if status is None:
                 # A previously working wireless interface can go silent while its
-                # mouse sleeps. Keep the cached path and retry it on the next poll.
+                # mouse sleeps. Keep the known-good path and transaction id.
                 return STATUS_TIMEOUT, None, None
-            self._cache.pop(gkey, None)
+            # The cached path/tid succeeded before, so a busy/failure/not-supported
+            # response may be the receiver's sleep transition, not evidence that a
+            # different transaction id is right. Keep it: probing fallbacks here can
+            # cache 0x3f after a sleeping 0x1f request and then miss every wake.
+            self._diag.append(
+                f"  cached interface returned status {status:02x}; keeping its working transaction id")
+            return STATUS_TIMEOUT, None, None
 
         # Probe order: vendor / main collection interfaces first, then the rest.
         # Collections Windows re-parented (interface number -1) go last.
@@ -330,7 +344,11 @@ class RazerProvider(Provider):
                     return status, level, charging
                 if status == STATUS_TIMEOUT:
                     timeout_hit = (status, None, None)
-                    self._cache[gkey] = _Cand(path, tid)
+                    # A sleep-time timeout from a fallback transaction ID does not
+                    # make that ID the device's working protocol. On a known model,
+                    # keep retrying its preferred ID when this interface is probed
+                    # again after sleep.
+                    self._cache[gkey] = _Cand(path, pref_tid if pref_tid is not None else tid)
                     break
             if not answered:
                 self._dead[path] = now + 300   # leave this interface alone for 5 minutes

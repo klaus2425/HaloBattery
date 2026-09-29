@@ -38,13 +38,18 @@ PENDING_WINDOW = 120
 # how often Windows.Gaming.Input is queried (PowerShell, ~1-2 s per call)
 WGI_REFRESH = 8
 
+# The Ultimate 2C Wireless reports through both XInput and WGI. Prefer its
+# XInput battery bucket when available so a stale WGI percentage cannot keep
+# the displayed level at 100%.
+XINPUT_BUCKET_DEVICES = {(0x2DC8, 0x310A)}
+
 # coarse level -> (ring percentage, tooltip text). "low" maps to 20% so it
 # turns red and triggers the alert at the default threshold.
 LEVELS = {
     0: (5, "empty"),
     1: (20, "low"),
     2: (55, "medium"),
-    3: (100, "full"),
+    3: (85, "70-100% full range"),
 }
 
 # (vendor id, required word in the product string or "") -> display name.
@@ -229,6 +234,14 @@ class XInputProvider(Provider):
                                   "connected over Bluetooth; turn on \"Windows Bluetooth devices\" "
                                   "to see its battery"))
                 continue
+            if rep is not None and (rep.vid, rep.pid) in XINPUT_BUCKET_DEVICES and res is not None:
+                level, charging, approx = res
+                if not charging:
+                    self._last[slot] = level
+                    self._diag.append(f"[XInput] slot {slot}: using XInput battery bucket for "
+                                      f"{rep.vid:04x}:{rep.pid:04x}")
+                    connected.append((slot, name, level, charging, approx))
+                    continue
             if rep is not None:
                 self._waiting.pop(slot, None)
                 if not rep.charging:
